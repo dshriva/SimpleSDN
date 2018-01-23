@@ -1,13 +1,20 @@
 package com.bootstrap;
 
+import com.node.Controller;
+import com.node.Switch;
+
+import java.io.IOException;
+
 /*
  * created by divya at 1/17/2018
  */
 public class Starter {
 
     private static int port = 0;
+    private static String id = null;
+    private static String host = null;
 
-    public static void main(String args[]) {
+    public static void main(String args[]) throws IOException {
 
         // Checking the arguments
         if (!validateInput(args)) {
@@ -19,20 +26,10 @@ public class Starter {
 
     }
 
-    private static boolean validateInput(String[] args) {
+    private static boolean validateInput(String[] args) throws IOException {
         if (args != null && args.length == 2) {
             System.out.println("Bootstrapping your machine");
             System.out.println("Port Number entered is : " + args[0]);
-
-            if (args[1].equals("c")) {
-                System.out.println("It is a Controller");
-
-            } else if (args[1].equals("s")) {
-                System.out.println("It is a Switch");
-            } else {
-                System.out.println("Invalid argument. Enter a switch or a Controller.");
-            }
-
             try {
                 port = Integer.parseInt(args[0]);
             } catch (NumberFormatException nfe) {
@@ -40,6 +37,24 @@ public class Starter {
                 System.out.println("Enter a valid port number. Try again");
                 return false;
             }
+
+            if (args[1].equals("c")) {
+                System.out.println("It is a Controller");
+                Controller controller = new Controller(port);
+                try {
+                    controller.messageExchange(port);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else if (args[1].equals("s")) {
+                System.out.println("It is a Switch");
+                Switch newSwitch = new Switch(port,id,host);
+                newSwitch.messageExchangeinSwitch(port,id,host);
+
+            } else {
+                System.out.println("Invalid argument. Enter a switch or a Controller.");
+            }
+
         } else {
             System.out.println("Invalid argument");
             return false;
