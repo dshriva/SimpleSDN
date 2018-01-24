@@ -1,6 +1,8 @@
 package com.node;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.*;
 import java.util.List;
 
@@ -8,56 +10,44 @@ import java.util.List;
  * created by divya at 1/17/2018
  */
 public class Switch {
-    private static String host;
-    private static int port;
-    private static String id;
+    private static String ipAddress = "127.0.0.1";
+    private static int switchport = 0;
 
-
-    public Switch(int port,String id,String host){
-        this.port = port;
-        this.id =id;
-        this.host =host;
+    public Switch(String port, String ipAddress) {
+        this.switchport = Integer.parseInt(port);
+        this.ipAddress = ipAddress;
     }
 
-    /* public static void main(String[] args) throws IOException {
-        Switch newSwitch = new Switch(9999,"1","dshriva@purdue");
-        System.out.println("This is switch");
-        messageExchangeinSwitch(port,id,host);
-
-    }
-    */
-
-    public static void messageExchangeinSwitch(int port, String id, String host) throws IOException {
+    public void messageExchangeinSwitch(int port, String id, String host) throws IOException, ClassNotFoundException {
 
         //creating socket descriptor for switch
-        DatagramSocket ds  = new DatagramSocket();
-        String str1 = "register me" + "$" + "S1";
+        DatagramSocket datagramSocket = new DatagramSocket();
+        String str1 = "register me" + "$" + "SwitchId1"; // String switch id which will be sent to the controller
 
         //sending register request to controller with ID information
         InetAddress ia = InetAddress.getLocalHost();
         byte[] b = str1.getBytes();
-        DatagramPacket dp = new DatagramPacket(b,b.length,ia,2999);
-        ds.send(dp);
-        System.out.println("register request to controller sent");
-
+        DatagramPacket datagramPacket = new DatagramPacket(b, b.length, ia, 2999);
+        datagramPacket.setAddress(InetAddress.getByName(ipAddress));
+        datagramPacket.setPort(2999);
+        datagramSocket.send(datagramPacket);
+        System.out.println("register request from switch 1 to controller sent");
 
         //receiving register response from controller
-        byte[] b1 =new byte[1024];
-        DatagramPacket dp1 = new DatagramPacket(b1,b1.length);
-        ds.receive(dp1);
-        System.out.println("register response received from controller to the switch");
-        String str3 = new String(dp1.getData(), 0, dp1.getLength());
-        System.out.println("result is " + str3);
-
-
-
-
-
-
-
+        byte[] b1 = new byte[1024];
+        DatagramPacket dp1 = new DatagramPacket(b1, b1.length);
+        datagramSocket.receive(dp1);
+        byte[] receivedBytes = dp1.getData();
+        ByteArrayInputStream bais = new ByteArrayInputStream(receivedBytes);
+        ObjectInputStream objInpStream = new ObjectInputStream(bais);
+        List<NodeInfo> nodeInfoList = (List<NodeInfo>) objInpStream.readObject();
+        System.out.println("Register response received from controller to the switch");
+        displayNodeInfo(nodeInfoList);
     }
 
-
-
-
+    public static void displayNodeInfo(List<NodeInfo> nodeInfoList) {
+        for (int i = 0; i < nodeInfoList.size(); i++) {
+            System.out.println(nodeInfoList.get(i).toString());
+        }
+    }
 }
