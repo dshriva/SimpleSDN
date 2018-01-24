@@ -2,6 +2,7 @@ package com.node;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.List;
 
 /*
  * created by divya at 1/17/2018
@@ -27,9 +28,11 @@ public class Switch {
     */
 
     public static void messageExchangeinSwitch(int port, String id, String host) throws IOException {
+
         //creating socket descriptor for switch
         DatagramSocket ds  = new DatagramSocket();
-        String str1 = "hi controller!";
+        String str1 = "register me" + "$" + "S1";
+
         //sending register request to controller with ID information
         InetAddress ia = InetAddress.getLocalHost();
         byte[] b = str1.getBytes();
@@ -45,6 +48,10 @@ public class Switch {
         System.out.println("register response received from controller to the switch");
         String str3 = new String(dp1.getData(), 0, dp1.getLength());
         System.out.println("result is " + str3);
+
+
+
+
 
 
 

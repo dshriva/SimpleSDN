@@ -1,11 +1,12 @@
 package com.node;
 
+import java.io.Serializable;
 import java.util.HashSet;
 
 /*
  * created by divya at 1/20/2018
  */
-public class NodeInfo {
+public class NodeInfo implements Serializable {
    private String id;
    private boolean active;
    private String host;
