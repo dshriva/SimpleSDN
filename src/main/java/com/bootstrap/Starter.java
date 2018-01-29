@@ -1,6 +1,7 @@
 package com.bootstrap;
 
 import com.node.Controller;
+import com.node.SDNSwitch;
 import com.node.Switch;
 
 import java.io.IOException;
@@ -50,8 +51,9 @@ public class Starter {
             } else if (args[1].equals("s")) {
                 System.out.println("It is a Switch");
                 System.out.println("Ip entered is : "+args[2]);
-                Switch newSwitch = new Switch(args[0], args[2]);
-                newSwitch.messageExchangeinSwitch(port, id, host);
+                System.out.println("Switch ID is :" + args[3]);
+                SDNSwitch sdnSwitch = new SDNSwitch(port,args[3],args[2],2999);
+                sdnSwitch.startSwitch();
 
             } else {
                 System.out.println("Invalid argument. Enter a switch or a Controller.");

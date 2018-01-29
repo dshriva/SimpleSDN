@@ -89,7 +89,7 @@ public class Controller {
             //converting data in bytes to string and splitting the string
             String str = new String(regRequest.getData(), 0, regRequest.getLength()); //converting data in bytes to String
             String[] splittedString = parseString(str); //calling the function to split the string
-            updateNodeInfoList(splittedString[0], splittedString[1]); //function to construct node info list
+            updateNodeInfoHashMap(splittedString[0], splittedString[1]); //function to construct node info list
 
             //Now sending the response to the switch
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -111,12 +111,17 @@ public class Controller {
         }
     }
 
-    private void updateNodeInfoList(String s, String s1) {
+    private void updateNodeInfoHashMap(String s, String s1) {
+        if(s.equalsIgnoreCase("register request")){
+            if(nodeInfoHashMap.containsKey(s1)){
+
+            }
+        }
     }
 
     public static String[] parseString(String str) { //function to split the string in order to serve the purpose of activating the switch
 
-        String split[] = str.split("\\$");
+        String split[] = str.split("\\:");
         return split;
 
     }
