@@ -41,6 +41,7 @@ public class Starter {
             if (args[1].equals("c")) {
                 System.out.println("It is a Controller");
                 Controller controller = new Controller(port);
+                controller.readConfigFile();
                 try {
                     controller.messageExchange(port);
                 } catch (IOException e) {
