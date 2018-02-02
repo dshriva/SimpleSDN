@@ -27,7 +27,7 @@ public class Starter {
 
     }
 
-    private static boolean validateInput(String[] args) throws IOException, ClassNotFoundException {
+    private static boolean validateInput(String[] args) throws IOException {
         if (args != null && args.length >= 2) {
             System.out.println("Bootstrapping your machine");
             System.out.println("Port Number entered is : " + args[0]);
@@ -51,8 +51,10 @@ public class Starter {
             } else if (args[1].equals("s")) {
                 System.out.println("It is a Switch");
                 System.out.println("Ip entered is : "+args[2]);
+                id =args[3];
+                host =args[2];
                 System.out.println("Switch ID is :" + args[3]);
-                SDNSwitch sdnSwitch = new SDNSwitch(port,args[3],args[2],2999);
+                SDNSwitch sdnSwitch = new SDNSwitch(port,id,host,2999);
                 sdnSwitch.startSwitch();
 
             } else {

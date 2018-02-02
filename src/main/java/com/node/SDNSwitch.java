@@ -20,7 +20,6 @@ public class SDNSwitch {
     private static String controllerIp;
     private static InetAddress controllerInetAddress = null;
     private static DatagramSocket switchDatagramSocket = null;
-    private static final String sendRegisterRequestMessage = "REGISTER_REQUEST" + ":" + Switchid;
     private static HashMap<String, NodeInfo> NodeInfoHashMap = new HashMap<String, NodeInfo>();
 
     //creating parameterized constructor
@@ -51,13 +50,14 @@ public class SDNSwitch {
             @Override
             public void run() {
                 //Need keep alive byte to be consistent across switches
-                byte[] buf = new byte[1000];
+                String keepalive = "KEEPALIVE";
+                byte[] buf = keepalive.getBytes();
                 for(Map.Entry<String, NodeInfo> entrySet : NodeInfoHashMap.entrySet()){
                     NodeInfo node = entrySet.getValue();
                     String neighborSwitchId = entrySet.getKey();
                     DatagramPacket keepAliveDataPacket = null;
                     try {
-                        keepAliveDataPacket = new DatagramPacket(buf, buf.length, InetAddress.getByName(node.getHost()), node.getPort());
+                        keepAliveDataPacket = new DatagramPacket(buf, buf.length, InetAddress.getByName(String.valueOf(node.getHost())), node.getPort());
                     } catch (UnknownHostException e) {
                         e.printStackTrace();
                     }
@@ -89,19 +89,24 @@ public class SDNSwitch {
         return topologyUpdatethread;
     }
 
+
     //Main function class - to be used only for testing.
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ClassNotFoundException {
         SDNSwitch sdnSwitch = new SDNSwitch(SwitchPort,Switchid,"127.0.0.1", 3000);
-        sdnSwitch.startSwitch();
+        try {
+            sdnSwitch.startSwitch();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void startSwitch() {
+    public void startSwitch() throws IOException {
         try {
             initSwitch();
 
             //Send initial REGISTER_REQUEST message format must be consistent with controller
             sendRegisterReqMsg();
-            sendPeriodicMessages();
+            //sendPeriodicMessages();
 
 
             //Initialise a data buffer and packet to use for incoming data
@@ -115,38 +120,40 @@ public class SDNSwitch {
                 switchDatagramSocket.receive(incomingData);
                 InetAddress incomingAddress = incomingData.getAddress();
                 byte[] incomingMessage = incomingData.getData();
-                String receivedMessage = new String(incomingMessage, 0, incomingData.getLength());
-
+               // String receivedMessage = new String(incomingMessage, 0, incomingData.getLength());
+                //System.out.println(receivedMessage);
+                ByteArrayInputStream byteIn = new ByteArrayInputStream(incomingMessage);
+                ObjectInputStream in = new ObjectInputStream(byteIn);
+                HashMap<String,NodeInfo> updatedNodeInfoHashMap = (HashMap<String,NodeInfo>) in.readObject();
+                System.out.println(updatedNodeInfoHashMap.toString());
                 if (incomingAddress == controllerInetAddress) {
-                    if (receivedMessage.equals("REGISTER_RESPONSE")) {
+                  //  if (receivedMessage.equals("REGISTER_RESPONSE")) {
                         //TODO update topology and hence switchIPs
                         //
-                    } else if (receivedMessage.equals("ROUTE_UPDATE")) {
+                 //   } else if (receivedMessage.equals("ROUTE_UPDATE")) {
                         //TODO update routing table
                     }
                     //TODO check for ROUTE_UPDATE and update routing table
                     //Also check for data to be sent on, check where it should go using routing table
                     //For current network only one switch and controller so simple topology
-                } else if (incomingAddress == switchInetAddress) {
+               // } else if (incomingAddress == switchInetAddress) {
                     //TODO essentially ignore packets from self (Shouldn't happen)
-                } else {
+                //} else {
                     //packets from other switches
-                    if (receivedMessage.equals("KEEP_ALIVE")) {
+               //     if (receivedMessage.equals("KEEP_ALIVE")) {
                         //switchIPs.add(incomingAddress);
                     }
                     //TODO deal with packets to be sent onwards, Also need to implement expiry on IP addresses
-                }
-            }
-
-        } catch (UnknownHostException e) {
+                }catch (UnknownHostException e) {
             e.printStackTrace();
-        } catch (IOException e) {
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } finally {
             //Need to close switchDatagramSocket when done
             switchDatagramSocket.close();
         }
-    }
+            }
+
     private static void sendPeriodicMessages() {
         //Setup timer (runs on its own thread)
         Timer periodicTimer = new Timer();
@@ -160,16 +167,19 @@ public class SDNSwitch {
         periodicTimer.scheduleAtFixedRate(topologyUpdate(switchDatagramSocket,controllerPort, NodeInfoHashMap), new Date(), k);
     }
 
+
     private static void sendRegisterReqMsg() throws IOException {
-        byte[] dataByte = sendRegisterRequestMessage.getBytes("UTF-8");
-        DatagramPacket registerRequest = new DatagramPacket(dataByte, 16, controllerInetAddress, controllerPort);
+        String sendRegisterRequestMessage = "REGISTER_REQUEST" + ":" + Switchid;
+        System.out.println(sendRegisterRequestMessage);
+        byte[] dataByte = sendRegisterRequestMessage.getBytes();
+        DatagramPacket registerRequest = new DatagramPacket(dataByte, dataByte.length, controllerInetAddress, controllerPort);
         switchDatagramSocket.send(registerRequest);
     }
 
     private static void initSwitch() throws UnknownHostException {
         switchInetAddress = InetAddress.getByName("127.0.0.1");
-        controllerInetAddress = InetAddress.getByName("127.0.0.1");
-        switchDatagramSocket = initSwitchSocket(SwitchPort, controllerInetAddress);
+        SDNSwitch.controllerInetAddress = InetAddress.getByName("127.0.0.1");
+        switchDatagramSocket = initSwitchSocket(SwitchPort, SDNSwitch.controllerInetAddress);
     }
 
     public void messageExchangeinSwitch(int port, String id, String host) {

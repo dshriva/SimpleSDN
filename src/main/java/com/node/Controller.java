@@ -20,7 +20,7 @@ public class Controller {
 
     }
 
-    public void readConfigFile() {
+    public void readConfigFile() throws IOException {
         String fileName = "config_map.txt";
         String line = null;
         BufferedReader bufferedReader = null;
@@ -66,55 +66,64 @@ public class Controller {
             e.printStackTrace();
         } finally {
             try {
+                if(bufferedReader != null)
                 bufferedReader.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
-
     public void messageExchange(int port) throws IOException {
 
-        DatagramSocket ds = null;
-        try {
-            // creating a socket header
-            ds = new DatagramSocket(2999);
+            DatagramSocket ds = null;
+            while(true){
+                try {
 
-            //receiving register request message from switch
-            byte[] b = new byte[1024];
-            DatagramPacket regRequest = new DatagramPacket(b, b.length);
-            ds.receive(regRequest);
-            System.out.println("register request from switch received");
+                    // creating a socket header
+                    ds = new DatagramSocket(2999);
 
-            //converting data in bytes to string and splitting the string
-            String str = new String(regRequest.getData(), 0, regRequest.getLength()); //converting data in bytes to String
-            String[] splittedString = parseString(str); //calling the function to split the string
-            updateNodeInfoHashMap(splittedString[0], splittedString[1]); //function to construct node info list
+                    //receiving register request message from switch
+                    byte[] b = new byte[1024];
+                    DatagramPacket regRequest = new DatagramPacket(b, b.length);
+                    ds.receive(regRequest);
+                    System.out.println("register request from switch received");
+                    //converting data in bytes to string and splitting the string
+                    String str = new String(regRequest.getData(), 0, regRequest.getLength());
+                    System.out.println(str);
+                    //converting data in bytes to String
+                    String[] splittedString = parseString(str); //calling the function to split the string
+                    System.out.println(Arrays.toString(splittedString));
 
-            //Now sending the response to the switch
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
-            objOpStream.writeObject(nodeInfoHashMap);
-            int length = 0;
-            byte[] buf = null;
-            buf = byteArrayOutputStream.toByteArray();
-            length = buf.length;
-            InetAddress ia = InetAddress.getLocalHost();
-            DatagramPacket response = new DatagramPacket(buf, length, ia, (regRequest.getPort()));
-            ds.send(response);
-            System.out.println("register response to switch sent");
+                    String SwitchHost = String.valueOf(regRequest.getAddress());
+                    int SwitchPort = regRequest.getPort();
+                    updateNodeInfoHashMap(splittedString[0], splittedString[1], SwitchHost, SwitchPort); //function to construct node info list
+                    //Now sending the response to the switch
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
+                    objOpStream.writeObject(nodeInfoHashMap);
+                    int length = 0;
+                    byte[] buf = null;
+                    buf = byteArrayOutputStream.toByteArray();
+                    length = buf.length;
+                    DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
+                    ds.send(response);
+                    System.out.println("register response to switch sent");
 
-        } catch (Exception e) {
+                } catch (Exception e) {
 
-        } finally {
-            ds.close();
-        }
+                } finally {
+                    ds.close();
+                }
+            }
+
     }
 
-    private void updateNodeInfoHashMap(String s, String s1) {
-        if(s.equalsIgnoreCase("register request")){
+    private void updateNodeInfoHashMap(String s, String s1, String SwitchHost, int SwitchPort) {
+        if(s.equalsIgnoreCase("REGISTER_REQUEST")){
             if(nodeInfoHashMap.containsKey(s1)){
-
+                nodeInfoHashMap.get(s1).setActive(true);
+                nodeInfoHashMap.get(s1).setPort(SwitchPort);
+                nodeInfoHashMap.get(s1).setHost(SwitchHost);
             }
         }
     }
