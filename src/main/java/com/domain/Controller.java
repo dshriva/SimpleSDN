@@ -94,35 +94,7 @@ public class Controller {
                     byte[] b = new byte[1024];
                     DatagramPacket regRequest = new DatagramPacket(b, b.length);
                     controllerSocket.receive(regRequest);
-                    System.out.println("register request from switch received");
-                    //converting data in bytes to string and splitting the string
-                    String str = new String(regRequest.getData(), 0, regRequest.getLength());
-                    System.out.println(str);
-                    //converting data in bytes to String
-                    String[] splittedString = parseString(str); //calling the function to split the string
-                    //System.out.println(Arrays.toString(splittedString));
-
-                    String switchIpAddress = String.valueOf(regRequest.getAddress());
-                    if (switchIpAddress.startsWith("/")) {
-                        switchIpAddress = switchIpAddress.substring(1);
-                    }
-                    int switchPort = regRequest.getPort();
-                    HashMap<String, NodeInfo> retMap = updateNodeInfoHashMap(splittedString[0], splittedString[1], switchIpAddress, switchPort);
-
-                    //function to construct node info list
-                    //Now sending the response to the switch
-                    if (retMap != null) {
-                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                        ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
-                        objOpStream.writeObject(retMap);
-                        int length = 0;
-                        byte[] buf = null;
-                        buf = byteArrayOutputStream.toByteArray();
-                        length = buf.length;
-                        DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
-                        controllerSocket.send(response);
-                        System.out.println("register response to switch sent");
-                    }
+                    handleRegisterRequestMessage(regRequest);
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -135,6 +107,38 @@ public class Controller {
             controllerSocket.close();
         }
 
+    }
+
+    private void handleRegisterRequestMessage(DatagramPacket regRequest) throws IOException {
+        System.out.println("register request from switch received");
+        //converting data in bytes to string and splitting the string
+        String str = new String(regRequest.getData(), 0, regRequest.getLength());
+        System.out.println(str);
+        //converting data in bytes to String
+        String[] splittedString = parseString(str); //calling the function to split the string
+        //System.out.println(Arrays.toString(splittedString));
+
+        String switchIpAddress = String.valueOf(regRequest.getAddress());
+        if (switchIpAddress.startsWith("/")) {
+            switchIpAddress = switchIpAddress.substring(1);
+        }
+        int switchPort = regRequest.getPort();
+        HashMap<String, NodeInfo> retMap = updateNodeInfoHashMap(splittedString[0], splittedString[1], switchIpAddress, switchPort);
+
+        //function to construct node info list
+        //Now sending the response to the switch
+        if (retMap != null) {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
+            objOpStream.writeObject(retMap);
+            int length = 0;
+            byte[] buf = null;
+            buf = byteArrayOutputStream.toByteArray();
+            length = buf.length;
+            DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
+            controllerSocket.send(response);
+            System.out.println("register response to switch sent");
+        }
     }
 
     private HashMap<String, NodeInfo> updateNodeInfoHashMap(String message, String switchId, String switchHost, int switchPort) {

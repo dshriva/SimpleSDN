@@ -88,40 +88,37 @@ public class SDNSwitch {
         TimerTask topologyUpdatethread = new TimerTask() {
             @Override
             public void run() {
-                System.out.println("\n\tSending message "+TOPOLOGY_UPDATE_MESSAGE);
+                System.out.println("\n\tSending message " + TOPOLOGY_UPDATE_MESSAGE);
+                HashMap<String, NodeInfo> sendMap = new HashMap<String, NodeInfo>();
+                sendMap.put(TOPOLOGY_UPDATE_MESSAGE, null);
                 for (Map.Entry<String, NodeInfo> entrySet : SDNSwitch.neighborHashMap.entrySet()) {
-                    HashSet<NodeInfo> neighborSwitchId = entrySet.getValue().getNeighbourSet();
-                    List<NodeInfo> neighbourList = new ArrayList<NodeInfo>();
-                    for (NodeInfo neighbour : neighborSwitchId) {
-                        if (neighbour.isActive()) {
-                            neighbourList.add(neighbour);
-                        }
-                    }
-
-                    ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-                    ObjectOutputStream out = null;
-                    try {
-                        out = new ObjectOutputStream(byteOut);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    try {
-                        out.writeObject(neighbourList);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    int length = 0;
-                    byte[] buf = null;
-                    buf = byteOut.toByteArray();
-                    length = buf.length;
-                    DatagramPacket TOPOLOGY_UPDATE = new DatagramPacket(buf, buf.length, controllerInetAddress, controllerPort);
-                    try {
-                        switchDatagramSocket.send(TOPOLOGY_UPDATE);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
+                    NodeInfo neighbor = entrySet.getValue();
+                    sendMap.put(neighbor.getId(), neighbor);
                 }
+                ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                ObjectOutputStream out = null;
+                try {
+                    out = new ObjectOutputStream(byteOut);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    out.writeObject(sendMap);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                int length = 0;
+                byte[] buf = null;
+                buf = byteOut.toByteArray();
+                length = buf.length;
+                DatagramPacket TOPOLOGY_UPDATE = new DatagramPacket(buf, buf.length, controllerInetAddress, controllerPort);
+                try {
+                    switchDatagramSocket.send(TOPOLOGY_UPDATE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("\tDone sending message " + TOPOLOGY_UPDATE_MESSAGE);
+                System.out.println("\t---------------------------------");
             }
         };
         return topologyUpdatethread;
