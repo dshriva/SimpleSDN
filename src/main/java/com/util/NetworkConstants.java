@@ -6,6 +6,7 @@ package com.util;
 public class NetworkConstants {
     public static final long K = 3000l;
     public static final long M = 2l;
+    public static final String LINK = "<->";
 
     // messages
     public final static String REGISTER_REQUEST_MESSAGE = "REGISTER_REQUEST";

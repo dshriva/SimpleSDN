@@ -1,7 +1,6 @@
-package com.node;
+package com.domain;
 
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -10,6 +9,8 @@ import java.util.Set;
 /*
  * created by divya at 1/20/2018
  */
+// NodeInfo{id='1', active=true, host='127.0.0.1', port=3001', lastSeenAt=1517728646102}
+// NodeInfo{id='1', active=true, host='127.0.0.1', port=3001', lastSeenAt=1517728646102}
 public class NodeInfo implements Serializable {
     private String id;
     private boolean active;
@@ -22,6 +23,10 @@ public class NodeInfo implements Serializable {
     // parameterized constructor
     public NodeInfo(String id) {
         this.id = id;
+    }
+
+    public NodeInfo() {
+
     }
 
     public HashSet<NodeInfo> getNeighbourSet() {
@@ -87,7 +92,8 @@ public class NodeInfo implements Serializable {
                 "id='" + id + '\'' +
                 ", active=" + active +
                 ", host='" + host + '\'' +
-                ", port=" + port + "}";
+                ", port=" + port + '\'' +
+                ", lastSeenAt=" + lastSeenAt + "}";
     }
 
     public long getLastSeenAt() {

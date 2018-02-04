@@ -1,8 +1,10 @@
 package com.bootstrap;
 
-import com.node.Controller;
-import com.node.SDNSwitch;
-import com.node.Switch;
+import com.domain.Controller;
+import com.domain.Switch;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.RollingFileAppender;
 
 import java.io.IOException;
 
@@ -14,6 +16,7 @@ public class Starter {
     private static int port = 0;
     private static String id = null;
     private static String host = null;
+    public static Logger _logger = Logger.getLogger(String.valueOf(Starter.class));
 
     public static void main(String args[]) throws IOException, ClassNotFoundException {
 
@@ -39,6 +42,8 @@ public class Starter {
                 return false;
             }
 
+            initLogging();
+
             if (args[1].equals("c")) {
                 System.out.println("It is a Controller");
                 Controller controller = new Controller(port);
@@ -56,8 +61,8 @@ public class Starter {
                 id =args[3];
                 host =args[2];
                 System.out.println("Switch ID is :" + args[3]);
-                SDNSwitch sdnSwitch = new SDNSwitch(port,id,host,2999);
-                sdnSwitch.startSwitch();
+                Switch aSwitch = new Switch(port,id,host,2999);
+                aSwitch.startSwitch();
 
             } else {
                 System.out.println("Invalid argument. Enter a switch or a Controller.");
@@ -68,5 +73,21 @@ public class Starter {
             return false;
         }
         return true;
+    }
+
+    public static boolean initLogging() {
+        try {
+            PatternLayout lyt = new PatternLayout("[%-5p] %d %c.class %t %m%n");
+            RollingFileAppender rollingFileAppender = new RollingFileAppender(lyt, "SimpleSDN.log");
+            rollingFileAppender.setLayout(lyt);
+            rollingFileAppender.setName("LOGFILE");
+            rollingFileAppender.setMaxFileSize("100MB");
+            rollingFileAppender.activateOptions();
+            Logger.getRootLogger().addAppender(rollingFileAppender);
+            return true;
+        }
+        catch (Exception e) {
+            return false;
+        }
     }
 }

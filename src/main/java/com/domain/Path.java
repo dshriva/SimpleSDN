@@ -1,6 +1,8 @@
-package com.node;
+package com.domain;
 
 import java.util.HashSet;
+
+import static com.util.NetworkConstants.LINK;
 
 /*
  * created by divya at 1/28/2018
@@ -13,7 +15,7 @@ public class Path {
     private HashSet<String> vertexSet = new HashSet<String>(2);
 
     public Path(int bandwidth, int delay, String id1, String id2,boolean usable) {
-        this.pathId = id1 + "<->" + id2;
+        this.pathId = id1 + LINK + id2;
         this.bandwidth = bandwidth;
         this.delay = delay;
         vertexSet.add(id1);

@@ -1,9 +1,11 @@
-package com.node;
+package com.domain;
 
 /*
  * created by divya at 1/27/2018
  * @author - divya, ashley
  */
+
+import org.apache.log4j.Logger;
 
 import java.net.*;
 import java.io.*;
@@ -11,7 +13,7 @@ import java.util.*;
 
 import static com.util.NetworkConstants.*;
 
-public class SDNSwitch {
+public class Switch {
 
     //Define switches unique IP (needs to be adapted to take command line argument)
     private static InetAddress switchInetAddress = null;
@@ -22,9 +24,11 @@ public class SDNSwitch {
     private static InetAddress controllerInetAddress = null;
     private static DatagramSocket switchDatagramSocket = null;
     private static HashMap<String, NodeInfo> neighborHashMap = new HashMap<String, NodeInfo>();
+    public static Logger LOGGER = Logger.getLogger(String.valueOf(Switch.class));
+
 
     //creating parameterized constructor
-    public SDNSwitch(int port, String switchID, String controllerIP, int controllerPort) {
+    public Switch(int port, String switchID, String controllerIP, int controllerPort) {
         this.SwitchPort = port;
         this.switchId = switchID;
         this.controllerIp = controllerIP;
@@ -89,9 +93,12 @@ public class SDNSwitch {
             @Override
             public void run() {
                 System.out.println("\n\tSending message " + TOPOLOGY_UPDATE_MESSAGE);
+                LOGGER.debug("\n\tSending message " + TOPOLOGY_UPDATE_MESSAGE);
                 HashMap<String, NodeInfo> sendMap = new HashMap<String, NodeInfo>();
-                sendMap.put(TOPOLOGY_UPDATE_MESSAGE, null);
-                for (Map.Entry<String, NodeInfo> entrySet : SDNSwitch.neighborHashMap.entrySet()) {
+                NodeInfo dummyNode = new NodeInfo();
+                dummyNode.setId(switchId);
+                sendMap.put(TOPOLOGY_UPDATE_MESSAGE, dummyNode);
+                for (Map.Entry<String, NodeInfo> entrySet : Switch.neighborHashMap.entrySet()) {
                     NodeInfo neighbor = entrySet.getValue();
                     sendMap.put(neighbor.getId(), neighbor);
                 }
@@ -100,6 +107,7 @@ public class SDNSwitch {
                 try {
                     out = new ObjectOutputStream(byteOut);
                 } catch (IOException e) {
+                    LOGGER.error(e.getMessage());
                     e.printStackTrace();
                 }
                 try {
@@ -139,6 +147,76 @@ public class SDNSwitch {
         };
         return displayNeighborThread;
     }
+
+    static TimerTask failureDetection() {
+        TimerTask failureDetectionThread = new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    //Need keep alive byte to be consistent across switches
+                    System.out.println("\n\n ------------------------------- ");
+                    System.out.println(" Detecting unreachable neighbors");
+                    boolean sendTopologyUpdate = false;
+                    for (Map.Entry<String, NodeInfo> entrySet : neighborHashMap.entrySet()) {
+                        if(entrySet.getValue().isActive()) {
+                            long currentTime = System.currentTimeMillis();
+                            if ((currentTime - (M * K)) > entrySet.getValue().getLastSeenAt()) {
+                                System.out.println("Marking Switch " + entrySet.getKey() + " as unreachable");
+                                LOGGER.error("Marking Switch " + entrySet.getKey() + " as unreachable");
+                                entrySet.getValue().setActive(false);
+                                sendTopologyUpdate = true;
+                            }
+                        }
+                    }
+                    System.out.println(" ------------------------------- \n");
+                    if(sendTopologyUpdate) {
+                        System.out.println(" -------------------------------");
+                        System.out.println("Sending message "+TOPOLOGY_UPDATE_MESSAGE+" to controller");
+                        sendTopologyUpdateImmediately();
+                    }
+                } catch (Exception ex) {
+                    LOGGER.error(ex.getStackTrace());
+                }
+            }
+
+            private void sendTopologyUpdateImmediately() {
+                HashMap<String, NodeInfo> sendMap = new HashMap<String, NodeInfo>();
+                NodeInfo dummyNode = new NodeInfo();
+                dummyNode.setId(switchId);
+                sendMap.put(TOPOLOGY_UPDATE_MESSAGE, dummyNode);
+                for (Map.Entry<String, NodeInfo> entrySet : Switch.neighborHashMap.entrySet()) {
+                    NodeInfo neighbor = entrySet.getValue();
+                    sendMap.put(neighbor.getId(), neighbor);
+                }
+                ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                ObjectOutputStream out = null;
+                try {
+                    out = new ObjectOutputStream(byteOut);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    out.writeObject(sendMap);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                int length = 0;
+                byte[] buf = null;
+                buf = byteOut.toByteArray();
+                length = buf.length;
+                DatagramPacket TOPOLOGY_UPDATE = new DatagramPacket(buf, buf.length, controllerInetAddress, controllerPort);
+                try {
+                    switchDatagramSocket.send(TOPOLOGY_UPDATE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("\tDone sending message " + TOPOLOGY_UPDATE_MESSAGE);
+            }
+        };
+        return failureDetectionThread;
+    }
+
+
 
     public void startSwitch() throws IOException {
         try {
@@ -195,6 +273,7 @@ public class SDNSwitch {
             neighborNode.setActive(true);
             neighborNode.setHost(incomingData.getAddress().getHostAddress());
             neighborNode.setPort(incomingData.getPort());
+            neighborNode.setLastSeenAt(System.currentTimeMillis());
         } else if(responseHashMap.containsKey(ROUTE_UPDATE_MESSAGE)) {
 
         }
@@ -208,30 +287,31 @@ public class SDNSwitch {
         Timer periodicTimer = new Timer();
         //Send keepAlive and TopologyUpdate messages every k milliseconds
         periodicTimer.schedule(sendKeepAlive(switchDatagramSocket, controllerPort), 0, K);
-        //periodicTimer.scheduleAtFixedRate(topologyUpdate(switchDatagramSocket, controllerPort), new Date(), K);
+        periodicTimer.scheduleAtFixedRate(topologyUpdate(switchDatagramSocket, controllerPort), new Date(), K);
         periodicTimer.schedule(displayCurrentNeighbor(switchDatagramSocket, controllerPort), 0, 10000);
+        periodicTimer.scheduleAtFixedRate(failureDetection(), new Date(), M*K);
     }
 
-
     private static void sendRegisterReqMsg() throws IOException {
-        String sendRegisterRequestMessage = "REGISTER_REQUEST" + ":" + switchId;
-        System.out.println(sendRegisterRequestMessage);
-        byte[] dataByte = sendRegisterRequestMessage.getBytes();
-        DatagramPacket registerRequest = new DatagramPacket(dataByte, dataByte.length, controllerInetAddress, controllerPort);
-        switchDatagramSocket.send(registerRequest);
+        HashMap<String, String> sendMap = new HashMap<String, String>();
+        sendMap.put(REGISTER_REQUEST_MESSAGE, switchId);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
+        objOpStream.writeObject(sendMap);
+        int length = 0;
+        byte[] buf = null;
+        buf = byteArrayOutputStream.toByteArray();
+        length = buf.length;
+        DatagramPacket response = new DatagramPacket(buf, length, InetAddress.getByName(controllerIp), controllerPort);
+        switchDatagramSocket.send(response);
     }
 
     private static void initSwitch() throws UnknownHostException {
         switchInetAddress = InetAddress.getByName("127.0.0.1");
-        SDNSwitch.controllerInetAddress = InetAddress.getByName("127.0.0.1");
-        switchDatagramSocket = initSwitchSocket(SwitchPort, SDNSwitch.controllerInetAddress);
+        Switch.controllerInetAddress = InetAddress.getByName("127.0.0.1");
+        switchDatagramSocket = initSwitchSocket(SwitchPort, Switch.controllerInetAddress);
     }
 
-    public void messageExchangeinSwitch(int port, String id, String host) {
-
+    public void initLogging() {
     }
-
-    /*
-    1. List of InetAddress replace with List of NodeInfo
-     */
 }
