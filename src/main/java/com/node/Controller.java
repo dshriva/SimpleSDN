@@ -3,18 +3,21 @@ package com.node;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.*;
+
+import static com.util.NetworkConstants.REGISTER_REQUEST_MESSAGE;
+import static com.util.NetworkConstants.REGISTER_RESPONSE_MESSAGE;
 
 /*
  * created by divya at 1/17/2018
  */
 public class Controller {
-    private static final int controllerPort = 2999;
     private static String machinePort = "";
     private static String controllerIP = "";
-    private HashMap<String, NodeInfo> nodeInfoHashMap = new HashMap<String, NodeInfo>();
-    private HashMap<String, Path> pathHashMap = new HashMap<String, Path>();
+    private static HashMap<String, NodeInfo> nodeInfoHashMap = new HashMap<String, NodeInfo>();
+    private static HashMap<String, Path> pathHashMap = new HashMap<String, Path>();
+    private static DatagramSocket controllerSocket = null;
 
     public Controller(int port) {
 
@@ -55,7 +58,7 @@ public class Controller {
                     nodeInfoHashMap.put(nodeInfo1.getId(), nodeInfo1);
                     nodeInfoHashMap.put(nodeInfo2.getId(), nodeInfo2);
 
-                    Path path = new Path(Integer.parseInt(keywords[2]), Integer.parseInt(keywords[3]), switchId1, switchId2);
+                    Path path = new Path(Integer.parseInt(keywords[2]), Integer.parseInt(keywords[3]), switchId1, switchId2,false);
                     pathHashMap.put(path.getPathId(), path);
                 }
                 System.out.println(line);
@@ -73,59 +76,120 @@ public class Controller {
             }
         }
     }
+
+    public void createSocket(int port) {
+        // creating a socket header
+        try {
+            controllerSocket = new DatagramSocket(port);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void messageExchange(int port) throws IOException {
-
-            DatagramSocket ds = null;
-            while(true){
+        try {
+            while (true) {
                 try {
-
-                    // creating a socket header
-                    ds = new DatagramSocket(2999);
-
                     //receiving register request message from switch
                     byte[] b = new byte[1024];
                     DatagramPacket regRequest = new DatagramPacket(b, b.length);
-                    ds.receive(regRequest);
+                    controllerSocket.receive(regRequest);
                     System.out.println("register request from switch received");
                     //converting data in bytes to string and splitting the string
                     String str = new String(regRequest.getData(), 0, regRequest.getLength());
                     System.out.println(str);
                     //converting data in bytes to String
                     String[] splittedString = parseString(str); //calling the function to split the string
-                    System.out.println(Arrays.toString(splittedString));
+                    //System.out.println(Arrays.toString(splittedString));
 
-                    String SwitchHost = String.valueOf(regRequest.getAddress());
-                    int SwitchPort = regRequest.getPort();
-                    updateNodeInfoHashMap(splittedString[0], splittedString[1], SwitchHost, SwitchPort); //function to construct node info list
+                    String switchIpAddress = String.valueOf(regRequest.getAddress());
+                    if (switchIpAddress.startsWith("/")) {
+                        switchIpAddress = switchIpAddress.substring(1);
+                    }
+                    int switchPort = regRequest.getPort();
+                    HashMap<String, NodeInfo> retMap = updateNodeInfoHashMap(splittedString[0], splittedString[1], switchIpAddress, switchPort);
+
+                    //function to construct node info list
                     //Now sending the response to the switch
-                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
-                    objOpStream.writeObject(nodeInfoHashMap);
-                    int length = 0;
-                    byte[] buf = null;
-                    buf = byteArrayOutputStream.toByteArray();
-                    length = buf.length;
-                    DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
-                    ds.send(response);
-                    System.out.println("register response to switch sent");
+                    if (retMap != null) {
+                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                        ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
+                        objOpStream.writeObject(retMap);
+                        int length = 0;
+                        byte[] buf = null;
+                        buf = byteArrayOutputStream.toByteArray();
+                        length = buf.length;
+                        DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
+                        controllerSocket.send(response);
+                        System.out.println("register response to switch sent");
+                    }
 
                 } catch (Exception e) {
-
-                } finally {
-                    ds.close();
+                    e.printStackTrace();
                 }
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }  finally {
+            System.out.println("Exiting...");
+            controllerSocket.close();
+        }
 
     }
 
-    private void updateNodeInfoHashMap(String s, String s1, String SwitchHost, int SwitchPort) {
-        if(s.equalsIgnoreCase("REGISTER_REQUEST")){
-            if(nodeInfoHashMap.containsKey(s1)){
-                nodeInfoHashMap.get(s1).setActive(true);
-                nodeInfoHashMap.get(s1).setPort(SwitchPort);
-                nodeInfoHashMap.get(s1).setHost(SwitchHost);
+    private HashMap<String, NodeInfo> updateNodeInfoHashMap(String message, String switchId, String switchHost, int switchPort) {
+        if(message.equalsIgnoreCase(REGISTER_REQUEST_MESSAGE)){
+            if(nodeInfoHashMap.containsKey(switchId)){
+                NodeInfo currNode = nodeInfoHashMap.get(switchId);
+                currNode.setActive(true);
+                currNode.setHost(switchHost);
+                currNode.setPort(switchPort);
+                currNode.setLastSeenAt(System.currentTimeMillis());
+               //return the neighbor set
+                HashMap<String, NodeInfo> retHashMap = new HashMap<String, NodeInfo>();
+                retHashMap.put(REGISTER_RESPONSE_MESSAGE, null);
+                for(NodeInfo neighborNodeInfo : currNode.getNeighbourSet()) {
+                    retHashMap.put(neighborNodeInfo.getId(), neighborNodeInfo);
+                    if(neighborNodeInfo.isActive()) {
+                        // set the path as usable
+                        if(pathHashMap.containsKey(neighborNodeInfo.getId() + "<->" + currNode.getId())){
+                           pathHashMap.get(neighborNodeInfo.getId() + "<->" + currNode.getId()).setUsable(true);
+                        } else if(pathHashMap.containsKey(currNode.getId() + "<->" + neighborNodeInfo.getId())) {
+                            pathHashMap.get(currNode.getId() + "<->" + neighborNodeInfo.getId()).setUsable(true);
+                        }
+                    }
+                }
+                return retHashMap;
             }
         }
+        return null;
+    }
+
+    static TimerTask displayNodeInfoPathInfo() {
+        TimerTask displayNodePathInfoThread = new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    //Need keep alive byte to be consistent across switches
+                    System.out.println("\n\n ------------------------------- ");
+                    System.out.println(" Displaying NodeInfo");
+                    for (Map.Entry<String, NodeInfo> entrySet : nodeInfoHashMap.entrySet()) {
+                        System.out.println(entrySet.getValue());
+                    }
+                    System.out.println(" ------------------------------- \n");
+
+                    System.out.println("\n\n ------------------------------- ");
+                    System.out.println(" Displaying PathInfo");
+                    for (Map.Entry<String, Path> entrySet : pathHashMap.entrySet()) {
+                        System.out.println(entrySet.getValue());
+                    }
+                    System.out.println(" ------------------------------- \n");
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        };
+        return displayNodePathInfoThread;
     }
 
     public static String[] parseString(String str) { //function to split the string in order to serve the purpose of activating the switch
@@ -182,6 +246,10 @@ public class Controller {
         }
     }
 
+    public void scheduleDisplay() {
+        Timer periodicTimer = new Timer();
+        periodicTimer.schedule(displayNodeInfoPathInfo(), 0, 10000);
+    }
 }
 
 

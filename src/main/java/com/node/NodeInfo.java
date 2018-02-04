@@ -17,6 +17,7 @@ public class NodeInfo implements Serializable {
     private int port;
     private HashSet<NodeInfo> neighbourSet = new HashSet<NodeInfo>();
     private Set<String> neighborIdSet =  new HashSet<String>();
+    private long lastSeenAt;
 
     // parameterized constructor
     public NodeInfo(String id) {
@@ -86,8 +87,14 @@ public class NodeInfo implements Serializable {
                 "id='" + id + '\'' +
                 ", active=" + active +
                 ", host='" + host + '\'' +
-                ", port=" + port + '\'' +
-                ", neighbourSet=" + this.getNeighbourIds().toString() +
-                '}';
+                ", port=" + port + "}";
+    }
+
+    public long getLastSeenAt() {
+        return lastSeenAt;
+    }
+
+    public void setLastSeenAt(long lastSeenAt) {
+        this.lastSeenAt = lastSeenAt;
     }
 }

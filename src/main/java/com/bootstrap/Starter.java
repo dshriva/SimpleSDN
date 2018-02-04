@@ -43,6 +43,8 @@ public class Starter {
                 System.out.println("It is a Controller");
                 Controller controller = new Controller(port);
                 controller.readConfigFile();
+                controller.createSocket(port);
+                controller.scheduleDisplay();
                 try {
                     controller.messageExchange(port);
                 } catch (IOException e) {
