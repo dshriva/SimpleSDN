@@ -25,6 +25,7 @@ public class Switch {
     private static DatagramSocket switchDatagramSocket = null;
     private static HashMap<String, NodeInfo> neighborHashMap = new HashMap<String, NodeInfo>();
     public static Logger LOGGER = Logger.getLogger(String.valueOf(Switch.class));
+    private static Set<String> unreachableSwitches = new HashSet<String>();
 
 
     //creating parameterized constructor
@@ -35,6 +36,10 @@ public class Switch {
         this.controllerPort = controllerPort;
     }
 
+    public Set<String> getUnreachableSwitches() {
+        return unreachableSwitches;
+    }
+
     //Function to initialise the UDP socket for a switch
     private static DatagramSocket initSwitchSocket(int port, InetAddress address) {
         DatagramSocket switchSocket = null;
@@ -42,46 +47,54 @@ public class Switch {
             //DatagramSocket is used for UDP (Socket for TCP)
             switchSocket = new DatagramSocket(port, address);
         } catch (SocketException e) {
-            System.err.println("Error creating switchSocket");
+            LOGGER.error("Error creating switchSocket");
+            System.out.println("Error creating switchSocket");
             System.exit(1);
         }
         return (switchSocket);
     }
 
-    //TODO The following two timer tasks do not currently work properly, needs finishing
     //Define the KEEP_ALIVE task
     static TimerTask sendKeepAlive(final DatagramSocket Socket, final int port) {
         TimerTask sendKeepAlivethread = new TimerTask() {
             @Override
             public void run() {
-                System.out.println("\n\t----------------------------");
-                System.out.println("\tStart sending message "+KEEP_ALIVE_MESSAGE);
+                System.out.println("Start sending message " + KEEP_ALIVE_MESSAGE);
+                LOGGER.trace("Start sending message " + KEEP_ALIVE_MESSAGE);
                 //Need keep alive byte to be consistent across switches
                 for (Map.Entry<String, NodeInfo> entrySet : neighborHashMap.entrySet()) {
                     NodeInfo neighbor = entrySet.getValue();
-                        if (neighbor.isActive()) {
-                            DatagramPacket keepAliveDataPacket = null;
-                            try {
-                                HashMap<String, String> sendMap = new HashMap<String, String>();
-                                sendMap.put(KEEP_ALIVE_MESSAGE, switchId);
-                                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                                ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
-                                objOpStream.writeObject(sendMap);
-                                int length = 0;
-                                byte[] buf = null;
-                                buf = byteArrayOutputStream.toByteArray();
-                                length = buf.length;
-                                DatagramPacket response = new DatagramPacket(buf, length, InetAddress.getByName(neighbor.getHost()), neighbor.getPort());
-                                switchDatagramSocket.send(response);
-                                System.out.println("\tSent Keep Alive to switch "+neighbor.getId()); } catch (UnknownHostException e) {
-                                e.printStackTrace();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                    // simulating link failures
+                    if(unreachableSwitches.contains(neighbor.getId())) {
+                        System.out.println("Skipping sending message to "+neighbor.getId()+ " as its unreachable.");
+                        LOGGER.info("Skipping sending message to "+neighbor.getId()+ " as its unreachable.");
+                        continue;
+                    }
+                    if (neighbor.isActive()) {
+                        DatagramPacket keepAliveDataPacket = null;
+                        try {
+                            HashMap<String, String> sendMap = new HashMap<String, String>();
+                            sendMap.put(KEEP_ALIVE_MESSAGE, switchId);
+                            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                            ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
+                            objOpStream.writeObject(sendMap);
+                            int length = 0;
+                            byte[] buf = null;
+                            buf = byteArrayOutputStream.toByteArray();
+                            length = buf.length;
+                            DatagramPacket response = new DatagramPacket(buf, length, InetAddress.getByName(neighbor.getHost()), neighbor.getPort());
+                            switchDatagramSocket.send(response);
+                            System.out.println("Sent Keep Alive to switch " + neighbor.getId());
+                            LOGGER.trace("Sent Keep Alive to switch " + neighbor.getId());
+                        } catch (UnknownHostException e) {
+                            LOGGER.error( e.getStackTrace());
+                        } catch (IOException e) {
+                            LOGGER.error( e.getStackTrace());
                         }
+                    }
                 }
-                System.out.println("\tDone sending message "+KEEP_ALIVE_MESSAGE);
-                System.out.println("\t---------------------------------");
+                LOGGER.trace("Done sending message " + KEEP_ALIVE_MESSAGE);
+                System.out.println("Done sending message " + KEEP_ALIVE_MESSAGE);
             }
         };
         return sendKeepAlivethread;
@@ -92,8 +105,8 @@ public class Switch {
         TimerTask topologyUpdatethread = new TimerTask() {
             @Override
             public void run() {
+                LOGGER.trace("Sending message " + TOPOLOGY_UPDATE_MESSAGE);
                 System.out.println("\n\tSending message " + TOPOLOGY_UPDATE_MESSAGE);
-                LOGGER.debug("\n\tSending message " + TOPOLOGY_UPDATE_MESSAGE);
                 HashMap<String, NodeInfo> sendMap = new HashMap<String, NodeInfo>();
                 NodeInfo dummyNode = new NodeInfo();
                 dummyNode.setId(switchId);
@@ -113,6 +126,7 @@ public class Switch {
                 try {
                     out.writeObject(sendMap);
                 } catch (IOException e) {
+                    LOGGER.error(e.getMessage());
                     e.printStackTrace();
                 }
                 int length = 0;
@@ -123,10 +137,11 @@ public class Switch {
                 try {
                     switchDatagramSocket.send(TOPOLOGY_UPDATE);
                 } catch (IOException e) {
+                    LOGGER.error(e.getStackTrace());
                     e.printStackTrace();
                 }
-                System.out.println("\tDone sending message " + TOPOLOGY_UPDATE_MESSAGE);
-                System.out.println("\t---------------------------------");
+                LOGGER.trace("Done sending message "+ TOPOLOGY_UPDATE_MESSAGE);
+                System.out.println("Done sending message "+ TOPOLOGY_UPDATE_MESSAGE);
             }
         };
         return topologyUpdatethread;
@@ -137,12 +152,12 @@ public class Switch {
             @Override
             public void run() {
                 //Need keep alive byte to be consistent across switches
-                System.out.println("\n\t ------------------------------- ");
-                System.out.println("\t Displaying neighbor status");
+                LOGGER.trace(" Displaying neighbor status");
+                System.out.println(" Displaying neighbor status");
                 for (Map.Entry<String, NodeInfo> entrySet : neighborHashMap.entrySet()) {
                     System.out.println(entrySet.getValue());
+                    LOGGER.trace(entrySet.getValue());
                 }
-                System.out.println("\t ------------------------------- \n");
             }
         };
         return displayNeighborThread;
@@ -154,24 +169,23 @@ public class Switch {
             public void run() {
                 try {
                     //Need keep alive byte to be consistent across switches
-                    System.out.println("\n\n ------------------------------- ");
+                    LOGGER.debug(" Detecting unreachable neighbors");
                     System.out.println(" Detecting unreachable neighbors");
                     boolean sendTopologyUpdate = false;
                     for (Map.Entry<String, NodeInfo> entrySet : neighborHashMap.entrySet()) {
-                        if(entrySet.getValue().isActive()) {
+                        if (entrySet.getValue().isActive()) {
                             long currentTime = System.currentTimeMillis();
                             if ((currentTime - (M * K)) > entrySet.getValue().getLastSeenAt()) {
                                 System.out.println("Marking Switch " + entrySet.getKey() + " as unreachable");
-                                LOGGER.error("Marking Switch " + entrySet.getKey() + " as unreachable");
+                                LOGGER.info("Marking Switch " + entrySet.getKey() + " as unreachable");
                                 entrySet.getValue().setActive(false);
                                 sendTopologyUpdate = true;
                             }
                         }
                     }
-                    System.out.println(" ------------------------------- \n");
-                    if(sendTopologyUpdate) {
-                        System.out.println(" -------------------------------");
-                        System.out.println("Sending message "+TOPOLOGY_UPDATE_MESSAGE+" to controller");
+                    if (sendTopologyUpdate) {
+                        System.out.println("Sending message " + TOPOLOGY_UPDATE_MESSAGE + " to controller");
+                        LOGGER.info("Sending message " + TOPOLOGY_UPDATE_MESSAGE + " to controller");
                         sendTopologyUpdateImmediately();
                     }
                 } catch (Exception ex) {
@@ -193,11 +207,13 @@ public class Switch {
                 try {
                     out = new ObjectOutputStream(byteOut);
                 } catch (IOException e) {
+                    LOGGER.error(e.getStackTrace());
                     e.printStackTrace();
                 }
                 try {
                     out.writeObject(sendMap);
                 } catch (IOException e) {
+                    LOGGER.error(e.getStackTrace());
                     e.printStackTrace();
                 }
                 int length = 0;
@@ -208,26 +224,27 @@ public class Switch {
                 try {
                     switchDatagramSocket.send(TOPOLOGY_UPDATE);
                 } catch (IOException e) {
+                    LOGGER.error(e.getStackTrace());
                     e.printStackTrace();
                 }
                 System.out.println("\tDone sending message " + TOPOLOGY_UPDATE_MESSAGE);
+                LOGGER.trace("Done sending message " + TOPOLOGY_UPDATE_MESSAGE);
             }
         };
         return failureDetectionThread;
     }
 
 
-
     public void startSwitch() throws IOException {
         try {
             initSwitch();
+            LOGGER.trace("Switch Socket created");
 
             //Send initial REGISTER_REQUEST message format must be consistent with controller
             sendRegisterReqMsg();
 
             //Initialise a data buffer and packet to use for incoming data
             byte[] inBuffer = new byte[1000];
-            //TODO buffer size may require changing
             DatagramPacket incomingData = new DatagramPacket(inBuffer, inBuffer.length);
             sendPeriodicMessages();
 
@@ -243,38 +260,48 @@ public class Switch {
                 processResponse(responseHashMap, incomingData);
             }
         } catch (UnknownHostException e) {
+            LOGGER.error(e.getStackTrace());
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
+            LOGGER.error(e.getStackTrace());
             e.printStackTrace();
         } finally {
             //Need to close switchDatagramSocket when done
+            LOGGER.debug("Exiting..");
             System.out.println("Exiting..");
             switchDatagramSocket.close();
         }
     }
 
     private void processResponse(HashMap responseHashMap, DatagramPacket incomingData) {
-        if(responseHashMap.containsKey(REGISTER_RESPONSE_MESSAGE)) {
-            for(Object set : responseHashMap.entrySet()) {
+        if (responseHashMap.containsKey(REGISTER_RESPONSE_MESSAGE)) {
+            for (Object set : responseHashMap.entrySet()) {
                 Map.Entry<String, NodeInfo> entrySet = (Map.Entry<String, NodeInfo>) set;
                 String switchId = entrySet.getKey();
-                if(switchId.equalsIgnoreCase(REGISTER_RESPONSE_MESSAGE))
+                if (switchId.equalsIgnoreCase(REGISTER_RESPONSE_MESSAGE))
                     continue;
                 NodeInfo neighbor = entrySet.getValue();
                 neighborHashMap.put(switchId, neighbor);
-                System.out.println("Neighbor = "+neighbor);
+                System.out.println("Neighbor = " + neighbor);
+                LOGGER.debug("Neighbor = " + neighbor);
             }
-        } else if(responseHashMap.containsKey(KEEP_ALIVE_MESSAGE)) {
+        } else if (responseHashMap.containsKey(KEEP_ALIVE_MESSAGE)) {
             String neighborSwitchId = (String) responseHashMap.get(KEEP_ALIVE_MESSAGE); // 1
             System.out.println("\t==========================================");
-            System.out.println("\tMessage received "+ KEEP_ALIVE_MESSAGE+ " from "+neighborSwitchId);
+            System.out.println("\tMessage received " + KEEP_ALIVE_MESSAGE + " from " + neighborSwitchId);
+            LOGGER.trace("Message received " + KEEP_ALIVE_MESSAGE + " from " + neighborSwitchId);
             System.out.println("\t==========================================");
-            NodeInfo neighborNode = neighborHashMap.get(neighborSwitchId);
-            neighborNode.setActive(true);
-            neighborNode.setHost(incomingData.getAddress().getHostAddress());
-            neighborNode.setPort(incomingData.getPort());
-            neighborNode.setLastSeenAt(System.currentTimeMillis());
-        } else if(responseHashMap.containsKey(ROUTE_UPDATE_MESSAGE)) {
+            if(unreachableSwitches.contains(neighborSwitchId)) {
+                System.out.println("Skipping receiving message from "+neighborSwitchId +" as its unreachable.");
+                LOGGER.info("Skipping receiving message from "+neighborSwitchId +" as its unreachable.");
+            } else {
+                NodeInfo neighborNode = neighborHashMap.get(neighborSwitchId);
+                neighborNode.setActive(true);
+                neighborNode.setHost(incomingData.getAddress().getHostAddress());
+                neighborNode.setPort(incomingData.getPort());
+                neighborNode.setLastSeenAt(System.currentTimeMillis());
+            }
+        } else if (responseHashMap.containsKey(ROUTE_UPDATE_MESSAGE)) {
 
         }
     }
@@ -289,7 +316,7 @@ public class Switch {
         periodicTimer.schedule(sendKeepAlive(switchDatagramSocket, controllerPort), 0, K);
         periodicTimer.scheduleAtFixedRate(topologyUpdate(switchDatagramSocket, controllerPort), new Date(), K);
         periodicTimer.schedule(displayCurrentNeighbor(switchDatagramSocket, controllerPort), 0, 10000);
-        periodicTimer.scheduleAtFixedRate(failureDetection(), new Date(), M*K);
+        periodicTimer.scheduleAtFixedRate(failureDetection(), new Date(), M * K);
     }
 
     private static void sendRegisterReqMsg() throws IOException {
@@ -304,6 +331,7 @@ public class Switch {
         length = buf.length;
         DatagramPacket response = new DatagramPacket(buf, length, InetAddress.getByName(controllerIp), controllerPort);
         switchDatagramSocket.send(response);
+        LOGGER.debug("register request message sent to the controller");
     }
 
     private static void initSwitch() throws UnknownHostException {

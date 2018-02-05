@@ -36,6 +36,8 @@ public class Controller {
             fileReader = new FileReader(fileName);
             bufferedReader = new BufferedReader(fileReader);
             int i = 0;
+            System.out.println("Reading Configuration File");
+            LOGGER.trace("Reading Configuration File");
             while ((line = bufferedReader.readLine()) != null) {
                 i++;
                 if (i > 1) {
@@ -69,13 +71,16 @@ public class Controller {
             }
         } catch (FileNotFoundException ex) {
             System.out.println("Unable to open file '" + fileName + "'");
+            LOGGER.error("Unable to open file '" + fileName + "'");
         } catch (IOException e) {
+            LOGGER.error(e.getStackTrace());
             e.printStackTrace();
         } finally {
             try {
                 if (bufferedReader != null)
                     bufferedReader.close();
             } catch (IOException e) {
+                LOGGER.error(e.getStackTrace());
                 e.printStackTrace();
             }
         }
@@ -86,6 +91,7 @@ public class Controller {
         try {
             controllerSocket = new DatagramSocket(port);
         } catch (SocketException e) {
+            LOGGER.error(e.getStackTrace());
             e.printStackTrace();
         }
     }
@@ -106,16 +112,17 @@ public class Controller {
                     HashMap responseHashMap = (HashMap) in.readObject();
                     processResponse(responseHashMap, incomingData);
                 } catch (Exception e) {
+                    LOGGER.error(e.getStackTrace());
                     e.printStackTrace();
                 }
             }
         } catch (Exception ex) {
+            LOGGER.error(ex.getStackTrace());
             ex.printStackTrace();
         } finally {
-            System.out.println("Exiting...");
+            LOGGER.debug("Exiting...");
             controllerSocket.close();
         }
-
     }
 
     private void processResponse(HashMap responseHashMap, DatagramPacket incomingData) {
@@ -126,6 +133,7 @@ public class Controller {
                 handleTopologyUpdateMessage(responseHashMap);
             }
         } catch (IOException e) {
+            LOGGER.error(e.getStackTrace());
             e.printStackTrace();
         }
     }
@@ -152,7 +160,7 @@ public class Controller {
                 }
             }
         }
-        computeWidestPath();
+        //computeWidestPath();
     }
 
     private void computeWidestPath() {
@@ -165,6 +173,7 @@ public class Controller {
 
     private void handleRegisterRequestMessage(HashMap responseHashMap, DatagramPacket regRequest) throws IOException {
         System.out.println("register request from switch received");
+        LOGGER.debug("register request from switch received");
         String switchId = (String) responseHashMap.get(REGISTER_REQUEST_MESSAGE);
         String switchIpAddress = String.valueOf(regRequest.getAddress());
         if (switchIpAddress.startsWith("/")) {
@@ -185,6 +194,7 @@ public class Controller {
             length = buf.length;
             DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
             controllerSocket.send(response);
+            LOGGER.debug("register response to switch sent");
             System.out.println("register response to switch sent");
         }
     }
@@ -221,8 +231,7 @@ public class Controller {
             public void run() {
                 try {
                     //Need keep alive byte to be consistent across switches
-                    System.out.println("\n\n ------------------------------- ");
-                    System.out.println(" Detecting failures");
+                    System.out.println("Detecting Failures");
                     LOGGER.debug("Detecting Failures");
                     for (Map.Entry<String, NodeInfo> entrySet : nodeInfoHashMap.entrySet()) {
                         long currentTime = System.currentTimeMillis();
@@ -230,6 +239,7 @@ public class Controller {
                         if ((currentTime - (M * K)) > entrySet.getValue().getLastSeenAt()) {
                             if(entrySet.getValue().isActive()) {
                                 System.out.println("Marking Switch "+entrySet.getKey()+" as dead");
+                                LOGGER.info("Marking Switch "+entrySet.getKey()+" as dead");
                                 entrySet.getValue().setActive(false);
                             }
                             //System.out.println("Marking the following paths as unreachable");
@@ -238,16 +248,16 @@ public class Controller {
                                 if(path.getVertexSet().contains(currNodeId)){
                                     //System.out.println("Path Id: "+path.getPathId());
                                     if(path.isUsable()) {
-                                        LOGGER.fatal("Marking the link"+path.getPathId()+" as unreachable");
                                         System.out.println("Marking the link"+path.getPathId()+" as unreachable");
+                                        LOGGER.info("Marking the link"+path.getPathId()+" as unreachable");
                                         path.setUsable(false);
                                     }
                                 }
                             }
                         }
                     }
-                    System.out.println(" ------------------------------- \n");
                 } catch (Exception ex) {
+                    LOGGER.error(ex.getStackTrace());
                     ex.printStackTrace();
                 }
             }
@@ -261,20 +271,22 @@ public class Controller {
             public void run() {
                 try {
                     //Need keep alive byte to be consistent across switches
-                    System.out.println("\n\n ------------------------------- ");
-                    System.out.println(" Displaying Switches");
+                    LOGGER.trace("Displaying Switches");
+                    System.out.println("Displaying Switches");
                     for (Map.Entry<String, NodeInfo> entrySet : nodeInfoHashMap.entrySet()) {
                         System.out.println(entrySet.getValue());
+                        LOGGER.trace(entrySet.getValue());
+                       // System.out.println(entrySet.getValue());
                     }
-                    System.out.println(" ------------------------------- ");
-
-                    System.out.println(" ------------------------------- ");
+                    LOGGER.trace(" Displaying Links");
                     System.out.println(" Displaying Links");
                     for (Map.Entry<String, Path> entrySet : pathHashMap.entrySet()) {
                         System.out.println(entrySet.getValue());
+                        LOGGER.trace(entrySet.getValue());
+                        //System.out.println(entrySet.getValue());
                     }
-                    System.out.println(" ------------------------------- \n");
                 } catch (Exception ex) {
+                    LOGGER.error(ex.getStackTrace());
                     ex.printStackTrace();
                 }
             }
@@ -288,26 +300,6 @@ public class Controller {
         return split;
 
     }
-
-    public static List<NodeInfo> constructNodeInfoList(String splittedString, String switchId) {
-
-        //creating domain (Switch) information list
-        List<NodeInfo> nodeInfoList = new ArrayList<NodeInfo>();
-        NodeInfo nodeInfo1 = new NodeInfo(switchId);
-        if (splittedString.equalsIgnoreCase("register me")) {
-            nodeInfo1.setActive(true); //setting switch as active
-        }
-        nodeInfoList.add(nodeInfo1);
-
-        return nodeInfoList;
-    }
-
-    public static void displayNodeInfo(List<NodeInfo> nodeInfoList) {
-        for (int i = 0; i < nodeInfoList.size(); i++) {
-            System.out.println(nodeInfoList.get(i).toString());
-        }
-    }
-
     public void activateNeighbors(NodeInfo node) {
         for (NodeInfo node1 : node.getNeighbourSet()) {
             node1.setActive(true);
@@ -342,8 +334,6 @@ public class Controller {
         periodicTimer.schedule(failureDetection(), 0, M *K);
     }
 
-    public void initLogging() {
-    }
 }
 
 
