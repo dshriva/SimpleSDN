@@ -66,11 +66,11 @@ public class Graph {
 		//check one node is not connected: If this is the case then connect and restart loop.
 		//when total path reaches the max limit (nodes-1) stop as done
     	for (int i = 0 ; i < pathMax; i++) {
-    		for (int pathNumber = 1; pathNumber < this.gettotpaths() + 1; pathNumber++) {
-    			if (nodeNeedsConnecting(listOfPaths.get(pathNumber), connectedNodes) == true) {
-    				pathHashMap.put(listOfPaths.get(pathNumber).getPathId(), listOfPaths.get(pathNumber));
-    		    	connectedNodes.add(listOfPaths.get(pathNumber).getNode1());
-    		    	connectedNodes.add(listOfPaths.get(pathNumber).getNode2());
+    		for (Path path: listOfPaths){
+    			if (nodeNeedsConnecting(path, connectedNodes) == true) {
+    				pathHashMap.put(path.getPathId(), path);
+    		    	connectedNodes.add(path.getNode1());
+    		    	connectedNodes.add(path.getNode2());
     				break;
     			}
     		}
