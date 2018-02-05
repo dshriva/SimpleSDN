@@ -152,6 +152,15 @@ public class Controller {
                 }
             }
         }
+        computeWidestPath();
+    }
+
+    private void computeWidestPath() {
+        Graph graph = new Graph(nodeInfoHashMap.size(), pathHashMap.size(), pathHashMap);
+        HashMap<String, Path> map = graph.computeWidestPath();
+        for(Map.Entry<String, Path> entrySet : map.entrySet()) {
+            LOGGER.info("Link Info : "+entrySet.getValue());
+        }
     }
 
     private void handleRegisterRequestMessage(HashMap responseHashMap, DatagramPacket regRequest) throws IOException {
