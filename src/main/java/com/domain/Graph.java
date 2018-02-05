@@ -91,7 +91,7 @@ public class Graph {
     //sort Paths and reverse so in descending order
     public List<Path> sortPaths(HashMap<String, Path> origPaths)
 	{
-    	List<Path> sortedList = new ArrayList<Path>();
+    	List<Path> sortedList = new ArrayList<Path>(origPaths.values());
     	Collections.sort(sortedList, new BandWidthComp());
     	Collections.reverse(sortedList);
 		return sortedList;
