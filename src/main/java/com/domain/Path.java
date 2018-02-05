@@ -1,27 +1,31 @@
-package node;
+package com.domain;
 
 import java.util.HashSet;
+import static com.util.NetworkConstants.LINK;
 
 /*
  * created by divya at 1/28/2018
  * updated by Ashley at 2/4/2018
  */
+
 public class Path {
     private String pathId;
     private int node1;
     private int node2;
     private int bandwidth;
     private int delay;
+    private boolean usable;
     private HashSet<String> vertexSet = new HashSet<String>(2);
 
-    public Path(int bandwidth, int delay, String id1, String id2) {
-    	this.node1 = Integer.parseInt(id1);
-    	this.node2 = Integer.parseInt(id2);
-        this.pathId = id1 + "<->" + id2;
+    public Path(int bandwidth, int delay, String id1, String id2,boolean usable) {
+        this.pathId = id1 + LINK + id2;
         this.bandwidth = bandwidth;
         this.delay = delay;
         vertexSet.add(id1);
         vertexSet.add(id2);
+        this.usable = usable;
+        this.node1 = Integer.parseInt(id1);
+        this.node2 = Integer.parseInt(id2);
     }
 
     public String getPathId() {
@@ -51,12 +55,40 @@ public class Path {
     public HashSet<String> getVertexSet() {
         return vertexSet;
     }
-    
+
+    public boolean isUsable() {
+        return usable;
+    }
+
+    public void setUsable(boolean usable) {
+        this.usable = usable;
+    }
+
     public int getNode1() {
         return node1;
     }
-    
+
+    public void setNode1(int node1) {
+        this.node1 = node1;
+    }
+
     public int getNode2() {
         return node2;
     }
+
+    public void setNode2(int node2) {
+        this.node2 = node2;
+    }
+
+    @Override
+    public String toString() {
+        return "Path{" +
+                "pathId='" + pathId + '\'' +
+                ", bandwidth=" + bandwidth +
+                ", delay=" + delay +
+                ", usable=" + usable +
+                '}';
+    }
 }
+
+

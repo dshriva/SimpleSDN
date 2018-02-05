@@ -1,17 +1,17 @@
-package node;
+package com.domain;
 //ECE50862 Project 1
 //Java code for the network graph and widest path algorithm ver1.
 //Ashley Gregg
 
 import java.util.*;
 
-public class graph {
+public class Graph {
 	private int order;//Total number of nodes
 	private int totPaths;//Total number of paths (or size)
 	private HashMap<String, Path> origPaths;
 	private HashMap<String, Path> workingPaths;
 	
-	public graph(int order, int totPaths, HashMap<String, Path> pathHashMap ) {
+	public Graph(int order, int totPaths, HashMap<String, Path> pathHashMap ) {
 		this.order = order;
 		this.totPaths = totPaths;
 		this.origPaths = pathHashMap;
@@ -81,18 +81,18 @@ public class graph {
     }   
     
     //Comparator based on Bandwidth of Path -needed to sort lists
-    public class bandWidthComp implements Comparator<Path> {
-    	  @Override
-    	  public int compare(Path a, Path b) {
-    	    return Integer.compare(a.getBandwidth(), b.getBandwidth());
-    	  }
-    	}
+    public class BandWidthComp implements Comparator<Path> {
+		public int compare(Path a, Path b) {
+			if(a.getBandwidth() > b.getBandwidth()) return 1;
+			return -1;
+		}
+	}
     
     //sort Paths and reverse so in descending order
     public List<Path> sortPaths(HashMap<String, Path> origPaths)
 	{
     	List<Path> sortedList = new ArrayList<Path>();
-    	Collections.sort(sortedList, new bandWidthComp());
+    	Collections.sort(sortedList, new BandWidthComp());
     	Collections.reverse(sortedList);
 		return sortedList;
 	}
