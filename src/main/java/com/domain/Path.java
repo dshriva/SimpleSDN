@@ -10,8 +10,6 @@ import static com.util.NetworkConstants.LINK;
 
 public class Path {
     private String pathId;
-    private int node1;
-    private int node2;
     private int bandwidth;
     private int delay;
     private boolean usable;
@@ -24,8 +22,6 @@ public class Path {
         vertexSet.add(id1);
         vertexSet.add(id2);
         this.usable = usable;
-        this.node1 = Integer.parseInt(id1);
-        this.node2 = Integer.parseInt(id2);
     }
 
     public String getPathId() {
@@ -62,22 +58,6 @@ public class Path {
 
     public void setUsable(boolean usable) {
         this.usable = usable;
-    }
-
-    public int getNode1() {
-        return node1;
-    }
-
-    public void setNode1(int node1) {
-        this.node1 = node1;
-    }
-
-    public int getNode2() {
-        return node2;
-    }
-
-    public void setNode2(int node2) {
-        this.node2 = node2;
     }
 
     @Override

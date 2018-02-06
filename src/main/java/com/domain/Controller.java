@@ -17,8 +17,8 @@ import static com.util.NetworkConstants.*;
 public class Controller {
     private static String machinePort = "";
     private static String controllerIP = "";
-    private static HashMap<String, NodeInfo> nodeInfoHashMap = new HashMap<String, NodeInfo>();
-    private static HashMap<String, Path> pathHashMap = new HashMap<String, Path>();
+    public static HashMap<String, NodeInfo> nodeInfoHashMap = new HashMap<String, NodeInfo>();
+    public static HashMap<String, Path> pathHashMap = new HashMap<String, Path>();
     private static DatagramSocket controllerSocket = null;
     public static Logger LOGGER = Logger.getLogger(String.valueOf(Controller.class));
 
@@ -139,6 +139,7 @@ public class Controller {
     }
 
     private void handleTopologyUpdateMessage(HashMap responseHashMap) {
+        LOGGER.debug("Entering the method: Controller.handleTopologyUpdateMessage");
         NodeInfo senderSwitchNode = (NodeInfo) responseHashMap.get(TOPOLOGY_UPDATE_MESSAGE);
         String senderSwitchId = senderSwitchNode.getId();
         nodeInfoHashMap.get(senderSwitchId).setLastSeenAt(System.currentTimeMillis());
@@ -160,22 +161,22 @@ public class Controller {
                 }
             }
         }
-        //computeWidestPath();
+        computeWidestPath();
+        LOGGER.debug("Exiting the method: Controller.handleTopologyUpdateMessage");
     }
 
     private void computeWidestPath() {
-        Graph graph = new Graph(nodeInfoHashMap.size(), pathHashMap.size(), pathHashMap);
-        HashMap<String, Path> map = graph.computeWidestPath();
-        for(Map.Entry<String, Path> entrySet : map.entrySet()) {
-            LOGGER.info("Link Info : "+entrySet.getValue());
-        }
+        Graph graph = new Graph(nodeInfoHashMap, pathHashMap);
+        LOGGER.debug("Entering the method: Controller.computeWidestPath");
+        graph.computeWidestPath();
+        LOGGER.debug("Exiting the method: Controller.computeWidestPath");
     }
 
     private void handleRegisterRequestMessage(HashMap responseHashMap, DatagramPacket regRequest) throws IOException {
-        System.out.println("register request from switch received");
-        LOGGER.debug("register request from switch received");
+        LOGGER.debug("Entering the method: Controller.handleRegisterRequestMessage");
         String switchId = (String) responseHashMap.get(REGISTER_REQUEST_MESSAGE);
         String switchIpAddress = String.valueOf(regRequest.getAddress());
+        LOGGER.info("Controller.handleRegisterRequestMessage: switchId = "+switchId+", switch ip = "+switchIpAddress);
         if (switchIpAddress.startsWith("/")) {
             switchIpAddress = switchIpAddress.substring(1);
         }
@@ -194,13 +195,16 @@ public class Controller {
             length = buf.length;
             DatagramPacket response = new DatagramPacket(buf, length, regRequest.getAddress(), (regRequest.getPort()));
             controllerSocket.send(response);
-            LOGGER.debug("register response to switch sent");
-            System.out.println("register response to switch sent");
+            LOGGER.info("Register response to switch sent");
+            //System.out.println("register response to switch sent");
         }
+        LOGGER.debug("Entering the method: Controller.handleRegisterRequestMessage");
     }
 
     private HashMap<String, NodeInfo> updateNodeInfoHashMap(String switchId, String switchHost, int switchPort) {
+        LOGGER.debug("Entering the method Controller.updateNodeInfoHashMap");
         if (nodeInfoHashMap.containsKey(switchId)) {
+            LOGGER.info("Updating membership list");
             NodeInfo currNode = nodeInfoHashMap.get(switchId);
             currNode.setActive(true);
             currNode.setHost(switchHost);
@@ -222,6 +226,7 @@ public class Controller {
             }
             return retHashMap;
         }
+        LOGGER.debug("Exiting the method Controller.updateNodeInfoHashMap");
         return null;
     }
 
@@ -292,40 +297,6 @@ public class Controller {
             }
         };
         return displayNodePathInfoThread;
-    }
-
-    public static String[] parseString(String str) { //function to split the string in order to serve the purpose of activating the switch
-
-        String split[] = str.split("\\:");
-        return split;
-
-    }
-    public void activateNeighbors(NodeInfo node) {
-        for (NodeInfo node1 : node.getNeighbourSet()) {
-            node1.setActive(true);
-        }
-    }
-
-    public void activateNeighbors2(Set<NodeInfo> set) {
-        for (NodeInfo node : set) {
-            node.setActive(true);
-        }
-    }
-
-    public void activateNeighbors3(Set<String> nodeIdSet) { // 2,4,6
-        if (nodeIdSet != null) {
-            for (String nodeID : nodeIdSet) {
-                nodeInfoHashMap.get(nodeID).setActive(true);
-            }
-        }
-
-    }
-
-    public void activateNeighbors4(String nodeId) { // a1
-        NodeInfo n = nodeInfoHashMap.get(nodeId);
-        if (n != null) {
-            n.setActive(true);
-        }
     }
 
     public void scheduleDisplay() {

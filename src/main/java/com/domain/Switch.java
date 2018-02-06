@@ -93,7 +93,7 @@ public class Switch {
                         }
                     }
                 }
-                LOGGER.trace("Done sending message " + KEEP_ALIVE_MESSAGE);
+                LOGGER.debug("Done sending message " + KEEP_ALIVE_MESSAGE);
                 System.out.println("Done sending message " + KEEP_ALIVE_MESSAGE);
             }
         };
@@ -338,8 +338,5 @@ public class Switch {
         switchInetAddress = InetAddress.getByName("127.0.0.1");
         Switch.controllerInetAddress = InetAddress.getByName("127.0.0.1");
         switchDatagramSocket = initSwitchSocket(SwitchPort, Switch.controllerInetAddress);
-    }
-
-    public void initLogging() {
     }
 }

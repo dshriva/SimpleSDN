@@ -80,18 +80,14 @@ public class Starter {
                 }
             } else if (args[1].equals("s")) {
                 System.out.println("It is a Switch");
-                _logger.debug("It is a Switch");
-                System.out.println("Ip entered is : " + args[2]);
-                _logger.trace("Switch Ip entered is : " + args[2]);
-                System.out.println("Switch ID is :" + args[3]);
-                _logger.trace("Switch ID is :" + args[3]);
-                id = args[3];
+
+                id = args[4];
                 host = args[2];
 
-                // java -jar <snapshot_name.jar> <OwnPort> <s> <ControllerIp> <SwitchId> <-f> <1,2,4> <-l> <f/e/i/d>
-                if (args.length > 5) {
-                   if (args[4].equalsIgnoreCase("-l")) {
-                        char c = args[5].charAt(0);
+                // java -jar <snapshot_name.jar> <OwnPort> <s> <ControllerIp> <controllerPort> <SwitchId> <-f> <1,2,4> <-l> <f/e/i/d>
+                if (args.length > 6) {
+                   if (args[5].equalsIgnoreCase("-l")) {
+                        char c = args[6].charAt(0);
                         if (c == 'f' || c == 'e' || c == 'i' || c == 'd' || c == 't') {
                             isLoggingInitiazed = initLogging("s", id, c);
                         } else {
@@ -99,10 +95,10 @@ public class Starter {
                         }
                     }
 
-                    if (args.length > 7
-                            && args[6].equalsIgnoreCase("-l")
-                            && args[7].length() == 1) {
-                        char c = args[7].charAt(0);
+                    if (args.length > 8
+                            && args[7].equalsIgnoreCase("-l")
+                            && args[8].length() == 1) {
+                        char c = args[8].charAt(0);
                         if (c == 'f' || c == 'e' || c == 'i' || c == 'd' || c == 't') {
                             isLoggingInitiazed = initLogging("s", id, c);
                         } else {
@@ -116,14 +112,22 @@ public class Starter {
                     initLogging("s", id, 'e');
                 }
 
-                Switch aSwitch = new Switch(port, id, host, 2999);
-                if (args.length > 5 && args[4].equalsIgnoreCase("-f")) {
-                    String[] unreachableSwitches = args[5].split(",");
+                Switch aSwitch = new Switch(port, id, host, Integer.parseInt(args[3]));
+                if (args.length > 6 && args[5].equalsIgnoreCase("-f")) {
+                    String[] unreachableSwitches = args[6].split(",");
                     for (String unreachableSwitch : unreachableSwitches) {
                         aSwitch.getUnreachableSwitches().add(unreachableSwitch);
                     }
                 }
                 aSwitch.startSwitch();
+                _logger.info("It is a Switch");
+                _logger.info("Switch port is" + args[0]);
+                System.out.println("Switch port is" + args[0]);
+                System.out.println("Controller Ip entered is : " + args[2]);
+                _logger.info("Controller Ip entered is : " + args[2]);
+                _logger.info("Controller port entered is : " + args[3]);
+                System.out.println("Switch ID is :" + args[4]);
+                _logger.info("Switch ID is :" + args[4]);
 
             } else {
                 System.out.println("Invalid argument. Enter a switch or a Controller.");
