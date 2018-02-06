@@ -67,7 +67,7 @@ public class Controller {
                     Path path = new Path(Integer.parseInt(keywords[2]), Integer.parseInt(keywords[3]), switchId1, switchId2, false);
                     pathHashMap.put(path.getPathId(), path);
                 }
-                System.out.println(line);
+                LOGGER.info(line);
             }
         } catch (FileNotFoundException ex) {
             System.out.println("Unable to open file '" + fileName + "'");
@@ -236,7 +236,7 @@ public class Controller {
             public void run() {
                 try {
                     //Need keep alive byte to be consistent across switches
-                    System.out.println("Detecting Failures");
+                    //System.out.println("Detecting Failures");
                     LOGGER.debug("Detecting Failures");
                     for (Map.Entry<String, NodeInfo> entrySet : nodeInfoHashMap.entrySet()) {
                         long currentTime = System.currentTimeMillis();
@@ -270,24 +270,24 @@ public class Controller {
         return failureDetectionThread;
     }
 
-    static TimerTask displayNodeInfoPathInfo() {
+    static TimerTask logNodeInfoPathInfo() {
         TimerTask displayNodePathInfoThread = new TimerTask() {
             @Override
             public void run() {
                 try {
                     //Need keep alive byte to be consistent across switches
-                    LOGGER.trace("Displaying Switches");
-                    System.out.println("Displaying Switches");
+                    LOGGER.debug("Displaying Switches");
+                    //System.out.println("Displaying Switches");
                     for (Map.Entry<String, NodeInfo> entrySet : nodeInfoHashMap.entrySet()) {
-                        System.out.println(entrySet.getValue());
-                        LOGGER.trace(entrySet.getValue());
+                        //System.out.println(entrySet.getValue());
+                        LOGGER.debug(entrySet.getValue());
                        // System.out.println(entrySet.getValue());
                     }
-                    LOGGER.trace(" Displaying Links");
-                    System.out.println(" Displaying Links");
+                    LOGGER.debug(" Displaying Links");
+                    //System.out.println(" Displaying Links");
                     for (Map.Entry<String, Path> entrySet : pathHashMap.entrySet()) {
-                        System.out.println(entrySet.getValue());
-                        LOGGER.trace(entrySet.getValue());
+                        //System.out.println(entrySet.getValue());
+                        LOGGER.debug(entrySet.getValue());
                         //System.out.println(entrySet.getValue());
                     }
                 } catch (Exception ex) {
@@ -301,7 +301,7 @@ public class Controller {
 
     public void scheduleDisplay() {
         Timer periodicTimer = new Timer();
-        periodicTimer.schedule(displayNodeInfoPathInfo(), 0, 10000);
+        periodicTimer.schedule(logNodeInfoPathInfo(), 0, 10000);
         periodicTimer.schedule(failureDetection(), 0, M *K);
     }
 

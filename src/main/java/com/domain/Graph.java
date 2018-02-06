@@ -70,43 +70,48 @@ public class Graph {
 
     //Calculates the widest path for the graph/network
     public HashMap<String, Path> computeWidestPath() {
-        LOGGER.debug("Entering the method: Graph.computeWidestPath");
-        LinkedHashMap<String, Path> pathHashMap = new LinkedHashMap<String, Path>();
-        // Number of nodes - 1 = minimum spanning tree number of paths
-        int maxNode = this.getOrder() - 1;
-        List<Path> listOfPaths = sortPaths(activePathMap);
+        LinkedHashMap<String, Path> pathHashMap = null;
+        try {
+            LOGGER.debug("Entering the method: Graph.computeWidestPath");
+            pathHashMap = new LinkedHashMap<String, Path>();
+            // Number of nodes - 1 = minimum spanning tree number of paths
+            int maxNode = this.getOrder() - 1;
+            List<Path> listOfPaths = sortPaths(activePathMap);
 
-        if(listOfPaths.isEmpty()) {
-            return pathHashMap;
-        }
+            if (listOfPaths.isEmpty()) {
+                return pathHashMap;
+            }
 
-        //Largest bandwidth path will always be in the network (assuming number of paths > 0)
-        Set<String> connectedNodes= new HashSet<String>(listOfPaths.get(0).getVertexSet());
+            //Largest bandwidth path will always be in the network (assuming number of paths > 0)
+            Set<String> connectedNodes = new HashSet<String>(listOfPaths.get(0).getVertexSet());
 
-        pathHashMap.put(listOfPaths.get(0).getPathId(), listOfPaths.get(0));
+            pathHashMap.put(listOfPaths.get(0).getPathId(), listOfPaths.get(0));
 
-        //need to loop through by highest bandwidth)
-        //check one node is already connected - to prevent multiple, split networks
-        //check one node is not connected: If this is the case then connect and restart loop.
-        //when total path reaches the max limit (nodes-1) stop as done
-        for (int i = 0 ; i < maxNode; i++) {
-            for (int j = 1; j < listOfPaths.size(); j++){
-                Path path = listOfPaths.get(j);
-                String pathId = path.getPathId();
-                String[] nodes = pathId.split(NetworkConstants.LINK);
-                if (nodeNeedsConnecting(connectedNodes, nodes[0], nodes[1])) {
-                    pathHashMap.put(path.getPathId(), path);
-                    connectedNodes.add(nodes[0]);
-                    connectedNodes.add(nodes[1]);
-                    break;
+            //need to loop through by highest bandwidth)
+            //check one node is already connected - to prevent multiple, split networks
+            //check one node is not connected: If this is the case then connect and restart loop.
+            //when total path reaches the max limit (nodes-1) stop as done
+            for (int i = 0; i < maxNode; i++) {
+                for (int j = 1; j < listOfPaths.size(); j++) {
+                    Path path = listOfPaths.get(j);
+                    String pathId = path.getPathId();
+                    String[] nodes = pathId.split(NetworkConstants.LINK);
+                    if (nodeNeedsConnecting(connectedNodes, nodes[0], nodes[1])) {
+                        pathHashMap.put(path.getPathId(), path);
+                        connectedNodes.add(nodes[0]);
+                        connectedNodes.add(nodes[1]);
+                        break;
+                    }
                 }
             }
+            LOGGER.info("Minimum spanning tree paths: ");//for debugging purposes
+            for (Path path : pathHashMap.values()) {
+                LOGGER.info(path.toString());
+            }
+            LOGGER.debug("Exiting the method: Graph.computeWidestPath");
+        } catch(Exception ex) {
+            LOGGER.error(ex.getStackTrace());
         }
-        LOGGER.info("Minimum spanning tree paths: ");//for debugging purposes
-        for(Path path : pathHashMap.values()) {
-            LOGGER.info(path.toString());
-        }
-        LOGGER.debug("Exiting the method: Graph.computeWidestPath");
         return pathHashMap;
 
     }
