@@ -164,7 +164,7 @@ public class Controller {
             }
         }
         computeWidestPath();
-        sendRouteUpdates();
+        //sendRouteUpdates();
         LOGGER.debug("Exiting the method: Controller.handleTopologyUpdateMessage");
     }
     
