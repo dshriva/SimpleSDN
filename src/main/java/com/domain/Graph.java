@@ -51,6 +51,10 @@ public class Graph {
     public void setTotPaths(int totPaths) {
         this.totPaths = totPaths;
     }
+    
+    public HashMap<String, NodeInfo> getActiveNodeMap() {
+        return activeNodeMap;
+    }
 
     public static void main(String[] args) {
         Controller c = new Controller(1000);
