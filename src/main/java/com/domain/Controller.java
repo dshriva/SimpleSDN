@@ -21,6 +21,7 @@ public class Controller {
     public static HashMap<String, Path> pathHashMap = new HashMap<String, Path>();
     private static DatagramSocket controllerSocket = null;
     public static Logger LOGGER = Logger.getLogger(String.valueOf(Controller.class));
+    public static HashMap<String, Path> widestPathHashMap = new HashMap<String, Path>();
 
 
     public Controller(int port) {
@@ -162,7 +163,73 @@ public class Controller {
             }
         }
         computeWidestPath();
+        sendRouteUpdates();
         LOGGER.debug("Exiting the method: Controller.handleTopologyUpdateMessage");
+    }
+    
+    private void sendRouteUpdates() {
+        LOGGER.debug("Entering the method: Controller.sendRouteUpdates");
+        Graph graph = new Graph(nodeInfoHashMap, pathHashMap);
+        int maxNode = nodeInfoHashMap.size();
+        
+        if (maxNode <= 1){
+        	return;
+        }
+        
+      //Iterate by node, each needs a table
+		for (int i = 1; i < maxNode  + 1; i++) {
+			HashMap<String, String> routingTable = new HashMap<String, String>();
+			//iterate through all other nodes
+            for (int j = 1; j < maxNode  + 1; j++) {
+            	if ((i != j)&&(nodeInfoHashMap.get(String.valueOf(j)).isActive())) {
+            		List<NodeInfo> linkPath = new ArrayList<NodeInfo>();
+            		NodeInfo startNode = graph.getActiveNodeMap().get(String.valueOf(i));
+            		List<NodeInfo> doneNodes = new ArrayList<NodeInfo>();
+            		if (SearchPath(startNode, String.valueOf(j), linkPath, doneNodes)) {
+            			routingTable.put(String.valueOf(j), linkPath.get(1).getId());
+            		}
+            	}
+            }
+          //send table to required node here.
+        	System.out.println("Table for "+i+" : " +routingTable);
+        }
+        LOGGER.debug("Exiting the method: Controller.sendRouteUpdates");
+    }
+
+    //Recursive path finder for one specifed node to another
+    Boolean SearchPath(NodeInfo node, String endPoint, List<NodeInfo> route, List<NodeInfo> DoneNodes)
+    {
+    	//System.out.println(node +" "+endPoint+" ");
+        if (node == null) 
+        	return false;
+        if (node.getId().equals(endPoint)){
+            route.add(node);
+            return true;
+        }
+        HashSet<NodeInfo> neighbours = node.getNeighbourSet();
+        HashSet<NodeInfo> set = new HashSet<NodeInfo>();
+        for (NodeInfo x : neighbours) {
+        	try{
+        		if (x.isActive()&&(pathHashMap.get(node.getId()+LINK+x.getId()).isUsable())) {
+             		set.add(x);
+        		}
+        	}
+        	catch (Exception ex) {
+                LOGGER.error(ex.getStackTrace());
+                //ex.printStackTrace();
+        	}
+        }
+        set.removeAll(DoneNodes);
+        DoneNodes.add(node);
+        for(NodeInfo neighbourNode : set)
+        {
+        	if (SearchPath(neighbourNode, endPoint, route, DoneNodes))
+            {
+                route.add(0, node);
+                return true;
+            }
+        }
+        return false;
     }
 
     private void computeWidestPath() {
