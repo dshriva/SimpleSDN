@@ -20,6 +20,7 @@ public class Controller {
     public static HashMap<String, NodeInfo> nodeInfoHashMap = new HashMap<String, NodeInfo>();
     public static HashMap<String, Path> pathHashMap = new HashMap<String, Path>();
     private static DatagramSocket controllerSocket = null;
+    private static Map<String,Path> minSpanningTree = null;
     public static Logger LOGGER = Logger.getLogger(String.valueOf(Controller.class));
     public static HashMap<String, Path> widestPathHashMap = new HashMap<String, Path>();
 
@@ -235,7 +236,7 @@ public class Controller {
     private void computeWidestPath() {
         Graph graph = new Graph(nodeInfoHashMap, pathHashMap);
         LOGGER.debug("Entering the method: Controller.computeWidestPath");
-        graph.computeWidestPath();
+        minSpanningTree = graph.computeWidestPath();
         LOGGER.debug("Exiting the method: Controller.computeWidestPath");
     }
 
@@ -291,6 +292,7 @@ public class Controller {
                     }
                 }
             }
+            System.out.println("Hurray! Switch "+switchId+" joined the network");
             return retHashMap;
         }
         LOGGER.debug("Exiting the method Controller.updateNodeInfoHashMap");
@@ -370,6 +372,39 @@ public class Controller {
         Timer periodicTimer = new Timer();
         periodicTimer.schedule(logNodeInfoPathInfo(), 0, 10000);
         periodicTimer.schedule(failureDetection(), 0, M *K);
+        periodicTimer.schedule(sendRouteInfo(), 0, K);
+    }
+    static TimerTask sendRouteInfo() {
+        TimerTask sendRouteInfoThread = new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    if(minSpanningTree != null && !minSpanningTree.isEmpty()) {
+                        LOGGER.debug("Sending Route Info to switches");
+                        minSpanningTree.put(ROUTE_UPDATE_MESSAGE, null);
+                        for (Map.Entry<String, NodeInfo> entrySet : nodeInfoHashMap.entrySet()) {
+                            NodeInfo switch1 = entrySet.getValue();
+                            if(switch1.isActive()) {
+                                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                                ObjectOutputStream objOpStream = new ObjectOutputStream(byteArrayOutputStream);
+                                objOpStream.writeObject(minSpanningTree);
+                                int length = 0;
+                                byte[] buf = null;
+                                buf = byteArrayOutputStream.toByteArray();
+                                length = buf.length;
+                                DatagramPacket response = new DatagramPacket(buf, length, InetAddress.getByName(switch1.getHost()), switch1.getPort());
+                                controllerSocket.send(response);
+                                LOGGER.debug(ROUTE_UPDATE_MESSAGE + " message sent to switch " + switch1.getId());
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    LOGGER.error(ex.getStackTrace());
+                    //ex.printStackTrace();
+                }
+            }
+        };
+        return sendRouteInfoThread;
     }
 
 }

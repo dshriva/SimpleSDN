@@ -1,6 +1,6 @@
 package com.domain;
 //ECE50862 Project 1
-//Java code for the network graph and widest path algorithm ver1.
+//Java code for the network graph and widest path algorithm.
 //Ashley Gregg
 // Refactored by divya (2/5/2018)
 
@@ -69,8 +69,8 @@ public class Graph {
 
 
     //Calculates the widest path for the graph/network
-    public HashMap<String, Path> computeWidestPath() {
-        LinkedHashMap<String, Path> pathHashMap = null;
+    public Map<String, Path> computeWidestPath() {
+        Map<String, Path> pathHashMap = null;
         try {
             LOGGER.debug("Entering the method: Graph.computeWidestPath");
             pathHashMap = new LinkedHashMap<String, Path>();

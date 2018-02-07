@@ -289,7 +289,6 @@ public class Switch {
             String neighborSwitchId = (String) responseHashMap.get(KEEP_ALIVE_MESSAGE); // 1
             LOGGER.debug("==========================================");
             LOGGER.debug("Message received " + KEEP_ALIVE_MESSAGE + " from " + neighborSwitchId);
-            LOGGER.debug("Message received " + KEEP_ALIVE_MESSAGE + " from " + neighborSwitchId);
             LOGGER.debug("==========================================");
             if(unreachableSwitches.contains(neighborSwitchId)) {
                 //System.out.println("Skipping receiving message from "+neighborSwitchId +" as its unreachable.");
@@ -302,11 +301,16 @@ public class Switch {
                 neighborNode.setLastSeenAt(System.currentTimeMillis());
             }
         } else if (responseHashMap.containsKey(ROUTE_UPDATE_MESSAGE)) {
+            LOGGER.info("Message received "+ROUTE_UPDATE_MESSAGE);
+            for (Object set : responseHashMap.entrySet()) {
+                Map.Entry<String, Path> entrySet = (Map.Entry<String, Path>) set;
+                String key = entrySet.getKey();
+                if (key.equalsIgnoreCase(ROUTE_UPDATE_MESSAGE))
+                    continue;
 
+                LOGGER.debug("Active Path: " + entrySet.getValue());
+            }
         }
-    }
-
-    private void checkActiveNeighbours() {
     }
 
     private static void sendPeriodicMessages() {

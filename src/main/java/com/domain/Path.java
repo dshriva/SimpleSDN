@@ -1,5 +1,6 @@
 package com.domain;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import static com.util.NetworkConstants.LINK;
 
@@ -8,7 +9,7 @@ import static com.util.NetworkConstants.LINK;
  * updated by Ashley at 2/4/2018
  */
 
-public class Path {
+public class Path implements Serializable{
     private String pathId;
     private int bandwidth;
     private int delay;
